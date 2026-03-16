@@ -1,0 +1,138 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id            String          @id @default(uuid())
+  email         String          @unique
+  name          String?
+  createdAt     DateTime        @default(now())
+  emailVerified DateTime?
+  image         String?
+  aiAnalysis    AIAnalysis[]
+  accounts      Account[]
+  budgets       Budget[]
+  categories    Category[]
+  insights      Insight[]
+  recurring     RecurringRule[]
+  sessions      Session[]
+  transactions  Transaction[]
+}
+
+model Account {
+  id                String  @id @default(uuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(uuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Category {
+  id           String          @id @default(uuid())
+  userId       String
+  name         String
+  icon         String
+  color        String
+  createdAt    DateTime        @default(now())
+  budgets      Budget[]
+  user         User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  recurring    RecurringRule[]
+  transactions Transaction[]
+}
+
+model Transaction {
+  id              String          @id @default(uuid())
+  userId          String
+  categoryId      String
+  amount          Int
+  type            TransactionType
+  note            String?
+  transactionDate DateTime
+  createdAt       DateTime        @default(now())
+  category        Category        @relation(fields: [categoryId], references: [id])
+  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Budget {
+  id           String   @id @default(uuid())
+  userId       String
+  categoryId   String
+  monthlyLimit Int
+  createdAt    DateTime @default(now())
+  category     Category @relation(fields: [categoryId], references: [id])
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, categoryId])
+}
+
+model RecurringRule {
+  id          String          @id @default(uuid())
+  userId      String
+  categoryId  String
+  amount      Int
+  type        TransactionType @default(expense)
+  frequency   Frequency
+  note        String?
+  nextDueDate DateTime
+  isActive    Boolean         @default(true)
+  createdAt   DateTime        @default(now())
+  category    Category        @relation(fields: [categoryId], references: [id])
+  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Insight {
+  id        String      @id @default(uuid())
+  userId    String
+  type      InsightType
+  content   String
+  createdAt DateTime    @default(now())
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model AIAnalysis {
+  id           String   @id @default(uuid())
+  userId       String
+  analysisJson Json
+  createdAt    DateTime @default(now())
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+enum TransactionType {
+  income
+  expense
+}
+
+enum Frequency {
+  weekly
+  monthly
+  yearly
+}
+
+enum InsightType {
+  weekly
+  monthly
+  behavior
+  projection
+}
