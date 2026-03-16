@@ -3,7 +3,7 @@ import { auth } from "@/lib/auth";
 import { RecurringService } from "@/services/recurring.service";
 
 interface RouteParams {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
 export async function DELETE(req: NextRequest, { params }: RouteParams) {
@@ -13,7 +13,8 @@ export async function DELETE(req: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    await RecurringService.delete(session.user.id, params.id);
+    const { id } = await params;
+    await RecurringService.delete(session.user.id, id);
     return new NextResponse(null, { status: 204 });
   } catch (error) {
     console.error("Recurring delete error:", error);
@@ -31,7 +32,8 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const updated = await RecurringService.toggleActive(session.user.id, params.id);
+    const { id } = await params;
+    const updated = await RecurringService.toggleActive(session.user.id, id);
     if (!updated) {
       return NextResponse.json({ error: "Rule not found" }, { status: 404 });
     }
