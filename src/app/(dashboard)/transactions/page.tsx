@@ -8,6 +8,8 @@ import { Suspense, useEffect, useState } from "react";
 import TransactionModal from "@/components/transactions/TransactionModal";
 import Skeleton from "@/components/ui/Skeleton";
 import { formatCurrency } from "@/lib/utils";
+import ConfirmModal from "@/components/ui/ConfirmModal";
+import toast from "react-hot-toast";
 
 function TransactionsContent() {
   const searchParams = useSearchParams();
@@ -60,6 +62,28 @@ function TransactionsContent() {
     if (filter === "all") return true;
     return tx.type === filter;
   });
+
+  const [confirmDelete, setConfirmDelete] = useState<{isOpen: boolean; id: string | null}>({isOpen: false, id: null});
+
+  const confirmDeleteTransaction = async () => {
+    if (!confirmDelete.id) return;
+    try {
+      const res = await fetch(`/api/transactions/${confirmDelete.id}`, {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        setTransactions(transactions.filter(t => t.id !== confirmDelete.id));
+        toast.success("Transaksi berhasil dihapus!");
+      } else {
+        toast.error("Gagal menghapus transaksi.");
+      }
+    } catch (error) {
+      console.error("Error deleting transaction:", error);
+      toast.error("Terjadi kesalahan sistem.");
+    } finally {
+      setConfirmDelete({ isOpen: false, id: null });
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -146,15 +170,28 @@ function TransactionsContent() {
                     {format(new Date(tx.transactionDate), "dd MMM yyyy", { locale: id })}
                   </p>
                 </div>
-                <div className="text-right shrink-0">
-                  <p
-                    className={`font-semibold ${
-                      tx.type === "income" ? "text-income" : "text-expense"
-                    }`}
+                <div className="flex items-center gap-4 shrink-0">
+                  <div className="text-right">
+                    <p
+                      className={`font-semibold ${
+                        tx.type === "income" ? "text-income" : "text-expense"
+                      }`}
+                    >
+                      {tx.type === "income" ? "+" : "-"}
+                      {formatCurrency(tx.amount)}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setConfirmDelete({ isOpen: true, id: tx.id })}
+                    className="p-2 text-muted-foreground hover:text-danger hover:bg-danger/10 rounded-lg transition-colors"
+                    title="Hapus Transaksi"
                   >
-                    {tx.type === "income" ? "+" : "-"}
-                    {formatCurrency(tx.amount)}
-                  </p>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M3 6h18" />
+                      <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+                      <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+                    </svg>
+                  </button>
                 </div>
               </div>
             ))
@@ -167,6 +204,14 @@ function TransactionsContent() {
         isOpen={isTransactionModalOpen}
         onClose={() => setTransactionModalOpen(false)}
         categories={categories}
+      />
+
+      <ConfirmModal
+        isOpen={confirmDelete.isOpen}
+        title="Hapus Transaksi"
+        message="Apakah Anda yakin ingin menghapus transaksi ini? Data yang dihapus tidak dapat dikembalikan dan akan memengaruhi saldo Anda."
+        onConfirm={confirmDeleteTransaction}
+        onCancel={() => setConfirmDelete({ isOpen: false, id: null })}
       />
     </div>
   );

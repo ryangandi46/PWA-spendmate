@@ -8,6 +8,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import Skeleton from "@/components/ui/Skeleton";
 import CurrencyInput from "@/components/ui/CurrencyInput";
 import { formatCurrency } from "@/lib/utils";
+import ConfirmModal from "@/components/ui/ConfirmModal";
+import toast from "react-hot-toast";
 
 interface Budget {
   id: string;
@@ -70,6 +72,28 @@ export default function BudgetsPage() {
     }
   };
 
+  const [confirmDelete, setConfirmDelete] = useState<{isOpen: boolean; id: string | null}>({isOpen: false, id: null});
+
+  const confirmDeleteBudget = async () => {
+    if (!confirmDelete.id) return;
+    try {
+      const res = await fetch(`/api/budgets/${confirmDelete.id}`, {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        fetchData();
+        toast.success("Budget berhasil dihapus!");
+      } else {
+        toast.error("Gagal menghapus budget.");
+      }
+    } catch (error) {
+      console.error("Error deleting budget:", error);
+      toast.error("Terjadi kesalahan sistem.");
+    } finally {
+      setConfirmDelete({ isOpen: false, id: null });
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -123,12 +147,25 @@ export default function BudgetsPage() {
                     </div>
                     <span className="font-semibold text-foreground">{budget.category.name}</span>
                   </div>
-                  <span className="text-lg font-bold text-foreground">
-                    {formatCurrency(budget.spent)}
-                    <span className="text-sm font-normal text-muted-foreground ml-1">
-                      / {formatCurrency(budget.monthlyLimit)}
+                  <div className="flex items-center gap-3">
+                    <span className="text-lg font-bold text-foreground">
+                      {formatCurrency(budget.spent)}
+                      <span className="text-sm font-normal text-muted-foreground ml-1">
+                        / {formatCurrency(budget.monthlyLimit)}
+                      </span>
                     </span>
-                  </span>
+                    <button
+                      onClick={() => setConfirmDelete({ isOpen: true, id: budget.id })}
+                      className="p-1.5 text-muted-foreground hover:text-danger hover:bg-danger/10 rounded-lg transition-colors"
+                      title="Hapus Budget"
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M3 6h18" />
+                        <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+                        <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+                      </svg>
+                    </button>
+                  </div>
                 </div>
                 
                 {/* Progress Bar Component embedded */}
@@ -216,6 +253,14 @@ export default function BudgetsPage() {
           </>
         )}
       </AnimatePresence>
+
+      <ConfirmModal
+        isOpen={confirmDelete.isOpen}
+        title="Hapus Budget"
+        message="Apakah Anda yakin ingin menghapus budget bulanan ini? Data ini tidak dapat dikembalikan."
+        onConfirm={confirmDeleteBudget}
+        onCancel={() => setConfirmDelete({ isOpen: false, id: null })}
+      />
     </div>
   );
 }
